@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Vue</title>
+</head>
+
+<body>
+    <div id="app">
+        <section v-if="loading">
+            Loading...
+        </section>
+        <section v-else>
+        <div>
+            <input type="text" v-model.trim="input.name" placeholder="name">
+            <input type="text" v-model.trim="input.email"
+                placeholder="email">
+                <a href="javascript:;" @click="submitHandler">送出</a>
+                <a href="javascript:;" @click="cancelHandler">取消</a>
+            </div>
+        <div>
+            <ol>
+                <li v-for="(contact,index) in contacts">
+                    {{ contact.name }} :: {{ contact.email }}
+                    <a href="javascript:;" @click="editHandler(index)">修改</a>
+                    <a href="javascript:;" @click="deleteHandler(index)">刪除</a>
+                </li>
+            </ol>
+        </div>
+        </section>
+    </div>
+</body>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.19/vue.js'></script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js'></script>
+<script>
+    var vm = new Vue({
+            el:'#app',
+            data:{
+                loading:false,
+                contacts:[],
+                input:{
+                    name:"",
+                    email:""
+                },
+                editIndex:null
+            },
+            mounted(){
+                this.loading = true
+                axios.get('http://localhost:8888/contact').then((res)=>{
+                    this.contacts = res.data
+                    this.loading = false
+                }).catch((err)=>{
+                    console.log(err)
+                })
+            },
+            methods:{
+                cancelHandler(){
+                    this.editIndex = null
+                    this.input.name = ''
+                    this.input.email = ''
+                },
+                submitHandler(){
+                    let {name,email} = this.input
+                    if(!name || !email) return
+                    
+                    if (!this.editIndex) {
+                        axios.post('http://localhost:8888/contact', this.input)
+                            .then((res) => {
+                                this.contacts.push(res.data)
+                                this.cancelHandler()
+                            })
+                            .catch((err) => {
+                                console.log(err)
+                            })
+                    } else {
+                        let {id} = this.contacts[this.editIndex]
+                        axios.put('http://localhost:8888/contact/'+ id,this.input)
+                            .then((res)=>{
+                                this.contacts[this.editIndex] = res.data
+                                this.cancelHandler()
+                            })
+                            .catch((err) => {
+                                console.log(err)
+                            })
+                    }
+                },
+                deleteHandler(index){
+                    let target = this.contacts[index]
+                    if(confirm(`是否刪除${target.name}`)){
+                        axios.delete('http://localhost:8888/contact/' + target.id)
+                            .then((res) => {
+                                this.contacts.splice(index, 1)
+                                this.cancelHandler()
+                            })
+                            .catch((err) => {
+                                console.log(err)
+                            })
+                    }
+                },
+                editHandler(index){
+                    let {name,email} = this.contacts[index]
+                    this.input = {
+                        name,
+                        email
+                    }
+                    this.editIndex = index
+                }
+            }
+        })
+</script>
+</html>
